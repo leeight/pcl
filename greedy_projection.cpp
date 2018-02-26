@@ -139,6 +139,18 @@ int main (int argc, char** argv)
   pcl::fromPCLPointCloud2 (cloud_blob, *cloud);
   //* the data should be available in cloud
 
+#if 0
+  // Smoothing with MLS
+  pcl::PointCloud<pcl::PointNormal>::Ptr mls_normals(new pcl::PointCloud<pcl::PointNormal>);
+  pcl::MovingLeastSquares<pcl::PointXYZ, pcl::PointNormal> mls;
+  mls.setInputCloud(cloud);
+  mls.setComputeNormals(true);
+  mls.setPolynomiaFit(true);
+  mls.setSearchMethod(tree);
+  mls.setSearchRadius(0.03);
+  mls.process(*mls_normals);
+#endif
+
   // Normal estimation*
   pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> n;
   pcl::PointCloud<pcl::Normal>::Ptr normals (new pcl::PointCloud<pcl::Normal>);

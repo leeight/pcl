@@ -4,17 +4,19 @@
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/algorithm/string/replace.hpp>
 #include <pcl/point_types.h>
-#include <pcl/io/pcd_io.h>
 #include <pcl/kdtree/kdtree_flann.h>
 #include <pcl/features/normal_3d.h>
 #include <pcl/surface/gp3.h>
 #include <pcl/surface/poisson.h>
+#include <pcl/surface/mls.h>
 #include <pcl/surface/marching_cubes_rbf.h>
 #include <pcl/surface/marching_cubes_hoppe.h>
 #include <pcl/surface/grid_projection.h>
 #include <pcl/surface/vtk_smoothing/vtk_mesh_smoothing_laplacian.h>
 #include <pcl/surface/vtk_smoothing/vtk_mesh_subdivision.h>
+#include <pcl/io/pcd_io.h>
 #include <pcl/io/vtk_io.h>
+#include <pcl/io/obj_io.h>
 
 namespace po = boost::program_options;
 
@@ -29,6 +31,8 @@ pcl::PolygonMesh::Ptr smoothSurface(pcl::PolygonMesh::Ptr mesh)
   pcl::PolygonMesh::Ptr newMesh(new pcl::PolygonMesh);
 
   pcl::MeshSmoothingLaplacianVTK vtk;
+  vtk.setNumIter(50);
+  vtk.setFeatureEdgeSmoothing(true);
   vtk.setInputMesh(mesh);
   vtk.process(*newMesh);
 
@@ -69,11 +73,15 @@ int main (int argc, char** argv)
   float samplesPerNode;
   int solverDivide;
 
+  // smooth
+  int smoothMesh = 0;
+
   po::options_description desc("Allowed options");
   desc.add_options()
     ("help,h", "Display help message")
     ("file,f", po::value<std::string>(&file), "The input pcd file")
     ("output,o", po::value<std::string>(&output), "The output vtk file")
+    ("smooth_mesh", po::value<int>(&smoothMesh)->default_value(0), "Smooth the mesh surface")
     ("gp3", "GreedyProjectionTriangulation is an implementation of a greedy triangulation algorithm for 3D points based on local 2D projections")
     ("ks", po::value<unsigned int>(&ks)->default_value(20), "n.setKSearch($ks)")
     ("sr", po::value<float>(&sr)->default_value(0.1f), "gp3.setSearchRadius($sr)")
@@ -141,17 +149,28 @@ int main (int argc, char** argv)
 
 #if 0
   // Smoothing with MLS
-  pcl::PointCloud<pcl::PointNormal>::Ptr mls_normals(new pcl::PointCloud<pcl::PointNormal>);
-  pcl::MovingLeastSquares<pcl::PointXYZ, pcl::PointNormal> mls;
-  mls.setInputCloud(cloud);
-  mls.setComputeNormals(true);
-  mls.setPolynomiaFit(true);
-  mls.setSearchMethod(tree);
-  mls.setSearchRadius(0.03);
-  mls.process(*mls_normals);
-#endif
 
-  // Normal estimation*
+  // Create a KD-Tree
+  pcl::search::KdTree<pcl::PointXYZ>::Ptr kdTree(new pcl::search::KdTree<pcl::PointXYZ>);
+
+  // Output has the PointNormal type in order to store the normals calculated by MLS
+  pcl::PointCloud<pcl::PointNormal>::Ptr normals(new pcl::PointCloud<pcl::PointNormal>);
+
+  // Init object (second point type is for the normals, even if unused)
+  pcl::MovingLeastSquares<pcl::PointXYZ, pcl::PointNormal> mls;
+
+  mls.setComputeNormals(true);
+
+  // Set parameters
+  mls.setInputCloud(cloud);
+  mls.setPolynomialFit(true);
+  mls.setSearchMethod(kdTree);
+  mls.setSearchRadius(sr);
+
+  // Reconstruct
+  mls.process(*normals);
+#else
+  // Normal estimation* (计算法线)
   pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> n;
   pcl::PointCloud<pcl::Normal>::Ptr normals (new pcl::PointCloud<pcl::Normal>);
   pcl::search::KdTree<pcl::PointXYZ>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZ>);
@@ -160,6 +179,7 @@ int main (int argc, char** argv)
   n.setSearchMethod (tree);
   n.setKSearch (ks);
   n.compute (*normals);
+#endif
   //* normals should not contain the point normals + surface curvatures
 
   // Concatenate the XYZ and normal fields*
@@ -237,13 +257,16 @@ int main (int argc, char** argv)
   std::vector<int> states = gp3.getPointStates();
 #endif
 
-#if 0
-  pcl::PolygonMesh::Ptr mesh(new pcl::PolygonMesh);
-  *mesh = triangles;
-  mesh = smoothSurface(mesh);
-  pcl::io::saveVTKFile (output, *mesh);
-#endif
-  pcl::io::saveVTKFile (output, triangles);
+  if (smoothMesh == 1) {
+    pcl::PolygonMesh::Ptr mesh(new pcl::PolygonMesh);
+    *mesh = triangles;
+    mesh = smoothSurface(mesh);
+    pcl::io::saveVTKFile (output, *mesh);
+  }
+  else {
+    pcl::io::saveVTKFile (output, triangles);
+    pcl::io::saveOBJFile (file + ".obj", triangles);
+  }
 
   std::cout << output << " successfully saved" << std::endl;
 

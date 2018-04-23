@@ -14,31 +14,31 @@ var willRemovedPoints = [];
 var kVTKModels = [
   {
     color: 0xCD5C5C,
-    url: 'models/1001/38_downsample.vtk'
+    url: 'models/1001/38-2.vtk'
   },
   {
     color: 0xF08080,
-    url: 'models/1001/52_downsample.vtk'
+    url: 'models/1001/52-2.vtk'
   },
   {
     color: 0xFA8072,
-    url: 'models/1001/82_downsample.vtk'
+    url: 'models/1001/82-2.vtk'
   },
   {
     color: 0xE9967A,
-    url: 'models/1001/88_downsample.vtk'
+    url: 'models/1001/88-2.vtk'
   },
   {
     color: 0xFFA07A,
-    url: 'models/1001/164_downsample.vtk'
+    url: 'models/1001/164-2.vtk'
   },
   {
     color: 0xABB2B9,
-    url: 'models/1001/205_downsample.vtk'
+    url: 'models/1001/205-2.vtk'
   },
   {
     color: 0xAAB7B8,
-    url: 'models/1001/244_downsample.vtk'
+    url: 'models/1001/244-2.vtk'
   }
 ];
 
@@ -57,7 +57,7 @@ function updateGroupGeometry(mesh, geometry) {
 
 function loadOBJModel() {
   var loader = new THREE.OBJLoader();
-  loader.load('models/table_scene_lms400_downsampled.pcd.obj', function (object) {
+  loader.load('models/1001/38-1.obj', function (object) {
     /*
     geometry.center();
     geometry.computeVertexNormals();
@@ -111,20 +111,32 @@ function loadOBJModel() {
 }
 
 async function loadAllVTKModels() {
+  var group = new THREE.Group();
+  scene.add(group);
+
   var models = kVTKModels;
   for (var i = 0; i < models.length; i++) {
     var config = models[i];
     var mesh = await loadVTKModel(config);
-    scene.add(mesh);
+    group.add(mesh);
   }
+
+  /*
   var box = new THREE.BoxHelper(group, 0xffffff);
   scene.add(box);
+  box.geometry.center();
+  var { x, y, z } = box.geometry.boundingSphere.center;
+  box.translateX(-x);
+  box.translateY(-y);
+  box.translateZ(-z);
+  box.update();
+  */
 }
 
 function loadVTKModel(config) {
   return new Promise(resolve => {
     var loader = new THREE.VTKLoader();
-    var url = config.url; // .replace('_downsample', '');
+    var url = config.url; // .replace('-1', '');
     loader.load(url, function(geometry) {
       // var subdivisions = 1;
       // var modifier = new THREE.BufferSubdivisionModifier(subdivisions);
@@ -141,7 +153,7 @@ function loadVTKModel(config) {
         flatShading: true
       });
       var mesh = new THREE.Mesh(geometry, material);
-      mesh.scale.multiplyScalar(400);
+      mesh.scale.multiplyScalar(100);
       resolve(mesh);
     });
   });

@@ -13,11 +13,13 @@ add_executable(cloud_viewer cloud_viewer.cpp)
 add_executable(pcl_visualizer_demo pcl_visualizer_demo.cpp)
 add_executable(statistical_outlier statistical_outlier.cpp)
 add_executable(voxel_grid voxel_grid.cpp)
+add_executable(test test.cpp)
 target_link_libraries(greedy_projection ${PCL_LIBRARIES} ${Boost_LIBRARIES})
 target_link_libraries(cloud_viewer ${PCL_LIBRARIES} ${Boost_LIBRARIES})
 target_link_libraries(pcl_visualizer_demo ${PCL_LIBRARIES} ${Boost_LIBRARIES})
 target_link_libraries(resampling ${PCL_LIBRARIES} ${Boost_LIBRARIES})
 target_link_libraries(statistical_outlier ${PCL_LIBRARIES} ${Boost_LIBRARIES})
 target_link_libraries(voxel_grid ${PCL_LIBRARIES} ${Boost_LIBRARIES})
+target_link_libraries(test ${PCL_LIBRARIES} ${Boost_LIBRARIES})
 
 

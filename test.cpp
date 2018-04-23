@@ -324,7 +324,9 @@ int main(int argc, char **argv) {
      "Set the number of iterations for the smoothing filter")
 
     ("enable_subd", "Enable pcl::MeshSubdivisionVTK")
-    ("subd_filter_type", po::value<std::string>(&subd.filter_type)->default_value(subd.filter_type), "Set the mesh subdivision filter type (linear, loop, butterfly).")
+    ("subd_filter_type",
+     po::value<std::string>(&subd.filter_type)->default_value(subd.filter_type),
+     "Set the mesh subdivision filter type (linear, loop, butterfly).")
   ;
 
   po::command_line_parser parser{argc, argv};
@@ -376,14 +378,15 @@ int main(int argc, char **argv) {
     pcl::PointCloud<pcl::PointNormal>::Ptr mls_normals = mlsSmoothing(cloud, tree, mlsp);
     std::cerr << ">> Concatenate XYZ and normal information...";
     pcl::concatenateFields(*cloud, *mls_normals, *cloud_with_normals);
-    std::cerr << "Done.\n";
   }
   else {
     pcl::PointCloud<pcl::Normal>::Ptr normals = normalEstimation(cloud, tree);
     std::cerr << ">> Concatenate XYZ and normal information...";
     pcl::concatenateFields(*cloud, *normals, *cloud_with_normals);
-    std::cerr << "Done.\n";
   }
+  std::string pcd_output = boost::replace_all_copy(input, ".pcd", "-1.pcd");
+  pcl::io::savePCDFileASCII(pcd_output, *cloud_with_normals);
+  std::cerr << "Done.\n";
 
   // Shared in different stages
   boost::shared_ptr<pcl::PolygonMesh> triangles(new pcl::PolygonMesh);

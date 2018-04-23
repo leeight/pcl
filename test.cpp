@@ -209,9 +209,31 @@ pcl::PointCloud<pcl::PointNormal>::Ptr mlsSmoothing(pcl::PointCloud<pcl::PointXY
   // mls.setProjectionMethod(projection_method);
   mls.setUpsamplingMethod(upsampling_method);
   mls.process(*mls_normals);
+
+  // 不清楚为什么，有时候 mls_normals->size() 会比 cloud->size() 小，导致 concatenateFields 的时候出错
+  // 所以补充一下，保证 size 是一致的
+  int diff = cloud->size() - mls_normals->size();
+  for (int i = 0; i < diff; i++) {
+    mls_normals->push_back(mls_normals->back());
+  }
+
   std::cerr << "Done.\n";
 
   return mls_normals;
+}
+
+pcl::PointCloud<pcl::Normal>::Ptr normalEstimation(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
+                                                   pcl::search::KdTree<pcl::PointXYZ>::Ptr tree) {
+  std::cerr << ">> Normal estimation...";
+  pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> n;
+  pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>);
+  n.setInputCloud(cloud);
+  n.setSearchMethod(tree);
+  n.setKSearch(20);
+  n.compute(*normals);
+  std::cerr << "Done.\n";
+
+  return normals;
 }
 
 int main(int argc, char **argv) {
@@ -348,37 +370,20 @@ int main(int argc, char **argv) {
   tree->setInputCloud(cloud);
   std::cerr << "Done.\n";
 
-  std::cerr << ">> Normal estimation...";
-  pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> n;
-  pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>);
-  n.setInputCloud(cloud);
-  n.setSearchMethod(tree);
-  n.setKSearch(20);
-  n.compute(*normals);
-  std::cerr << "Done.\n";
-
-  bool enable_mls = vm.count("enable_mls");
-  pcl::PointCloud<pcl::PointNormal>::Ptr mls_normals = NULL;
-  if (enable_mls) {
-    mls_normals = mlsSmoothing(cloud, tree, mlsp);
-  }
-
-  std::cerr << ">> Concatenate XYZ and normal information...";
   pcl::PointCloud<pcl::PointNormal>::Ptr cloud_with_normals(new pcl::PointCloud<pcl::PointNormal>);
+  bool enable_mls = vm.count("enable_mls");
   if (enable_mls) {
-    std::cerr << "   " << cloud->size() << " - " << mls_normals->size() << " - ";
-    // 不清楚为什么，有时候 mls_normals->size() 会比 cloud->size() 小，导致 concatenateFields 的时候出错
-    // 所以补充一下，保证 size 是一致的
-    int diff = cloud->size() - mls_normals->size();
-    for (int i = 0; i < diff; i++) {
-      mls_normals->push_back(mls_normals->back());
-    }
+    pcl::PointCloud<pcl::PointNormal>::Ptr mls_normals = mlsSmoothing(cloud, tree, mlsp);
+    std::cerr << ">> Concatenate XYZ and normal information...";
     pcl::concatenateFields(*cloud, *mls_normals, *cloud_with_normals);
+    std::cerr << "Done.\n";
   }
   else {
+    pcl::PointCloud<pcl::Normal>::Ptr normals = normalEstimation(cloud, tree);
+    std::cerr << ">> Concatenate XYZ and normal information...";
     pcl::concatenateFields(*cloud, *normals, *cloud_with_normals);
+    std::cerr << "Done.\n";
   }
-  std::cerr << "Done.\n";
 
   // Shared in different stages
   boost::shared_ptr<pcl::PolygonMesh> triangles(new pcl::PolygonMesh);

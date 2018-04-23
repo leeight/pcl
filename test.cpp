@@ -28,6 +28,10 @@ struct Gp3Options {
   double maximum_nearest_neighbors = 100;
 };
 
+struct VoxelGridOptions {
+  float leaf_size = 0.01f;
+};
+
 struct LaplacianOptions {
   int num_iter = 20000;
   double convergence = 0.0f;
@@ -214,6 +218,7 @@ int main(int argc, char **argv) {
   std::string input;
 
   Gp3Options gp3;
+  VoxelGridOptions voxel;
   LaplacianOptions laplacian;
   SincOptions sinc;
   SubdivisionOptions subd;
@@ -225,6 +230,9 @@ int main(int argc, char **argv) {
     ("file,f", po::value<std::string>(&input), "The input pcd file")
 
     ("enable_voxel_grid_filter", "Enable pcl::VoxelGrid filter")
+    ("voxel_leaf_size",
+     po::value<float>(&voxel.leaf_size)->default_value(voxel.leaf_size),
+     "Set the voxel grid leaf size.")
 
     ("enable_mls", "Enable pcl::MovingLeastSquares")
     ("mls_compute_normals",
@@ -320,11 +328,12 @@ int main(int argc, char **argv) {
   bool enable_voxel_grid_filter = vm.count("enable_voxel_grid_filter");
   pcl::PCLPointCloud2::Ptr cloud_filtered(new pcl::PCLPointCloud2);
   if (enable_voxel_grid_filter) {
-    std::cerr << ">> Begin VoxelGrid...";
+    std::cerr << ">> Begin VoxelGrid..." << "  " << cloud_blob->width * cloud_blob->height << " - ";
     pcl::VoxelGrid<pcl::PCLPointCloud2> sor;
     sor.setInputCloud(cloud_blob);
-    sor.setLeafSize(0.01f, 0.01f, 0.01f);
+    sor.setLeafSize(voxel.leaf_size, voxel.leaf_size, voxel.leaf_size);
     sor.filter(*cloud_filtered);
+    std::cerr << cloud_filtered->width * cloud_filtered->height << " - ";
     std::cerr << "Done.\n";
   }
 
